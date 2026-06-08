@@ -10,7 +10,7 @@ let initialized = false;
 
 function init() {
   if (initialized) return;
-  if (!process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
     console.warn('[push] FIREBASE_SERVICE_ACCOUNT_PATH not set — push notifications disabled');
     return;
   }
