@@ -113,6 +113,7 @@ async function pushAlertToNearbyDevices(alert) {
   try {
     const response = await admin.messaging().sendEachForMulticast(message);
     console.log(`[push] Alert ${alert.id}: ${response.successCount} sent, ${response.failureCount} failed`);
+    response.responses.forEach((r, i) => { if (!r.success) console.error('[push] Error:', JSON.stringify(r.error)); });
 
     // Clean up stale/invalid tokens
     response.responses.forEach((resp, idx) => {
