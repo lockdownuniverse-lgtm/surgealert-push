@@ -14,7 +14,7 @@ function init() {
     console.warn('[push] FIREBASE_SERVICE_ACCOUNT_PATH not set — push notifications disabled');
     return;
   }
-  const serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });
