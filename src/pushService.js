@@ -140,29 +140,39 @@ async function pushAlertToNearbyDevices(alert) {
   }
 }
 
-// Send a silent background update (for score changes without a full alert)
-async function pushSilentUpdate(lat, lon, scoreData) {
-  if (!initialized) return;
-  const tokens = getTokensNear(lat, lon, 2.0);
-  if (!tokens.length) return;
 
-  const message = {
-    data: {
-      type:     'score_update',
-      score:    String(scoreData.score),
-      severity: scoreData.severity,
-      lat:      String(lat),
-      lon:      String(lon),
-    },
-    android: { priority: 'normal' },
-    apns: { payload: { aps: { 'content-available': 1 } } },
-    tokens,
-  };
+async function pushAlertToNearbyDevices(alert) {
+  const tokens = getTokensNear(alert.lat, alert.lon);
+  if (tokens.length === 0) {
+    console.log('[push] No registered devices near alert ' + alert.id);
+    return { sent: 0, failed: 0 };
+  }
 
-  await admin.messaging().sendEachForMulticast(message).catch(e =>
-    console.error('[push] Silent update error:', e.message)
-  );
+  const messages = tokens.map(token => ({
+    to: token,
+    title: SEVERITY_TITLES[alert.severity] || 'SurgeAlert',
+    body: SEVERITY_BODIES[alert.severity] || alert.message,
+    data: { alertId: String(alert.id), severity: alert.severity, score: String(alert.score) },
+    sound: 'default',
+    priority: 'high',
+  }));
+
+  try {
+    const axios = require('axios');
+    const response = await axios.post('https://exp.host/--/api/v2/push/send', messages, {
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+    });
+    const results = response.data.data || [];
+    const sent = results.filter(r => r.status === 'ok').length;
+    const failed = results.filter(r => r.status !== 'ok').length;
+    console.log('[push] Alert ' + alert.id + ': ' + sent + ' sent, ' + failed + ' failed');
+    return { sent, failed, total: tokens.length };
+  } catch (err) {
+    console.error('[push] Expo push error:', err.message);
+    return { sent: 0, failed: tokens.length, error: err.message };
+  }
 }
+
 
 module.exports = {
   init,
@@ -170,6 +180,5 @@ module.exports = {
   unregisterDevice,
   getTokensNear,
   pushAlertToNearbyDevices,
-  pushSilentUpdate,
   deviceRegistry,
 };
