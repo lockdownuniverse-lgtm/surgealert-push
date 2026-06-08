@@ -38,6 +38,7 @@ app.post('/webhook/alert', async (req, res) => {
 
 // Initialize Firebase and start server
 push.init();
+db.init().catch(console.error);
 
 app.listen(PORT, () => {
   console.log(`SurgeAlert Push Service running on port ${PORT}`);
