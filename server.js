@@ -31,9 +31,28 @@ app.post('/webhook/alert', async (req, res) => {
   const { alert } = req.body;
   if (!alert) return res.status(400).json({ error: 'alert payload required' });
 
-  console.log(`[webhook] Received alert ${alert.id} severity=${alert.severity}`);
-  const result = await push.pushAlertToNearbyDevices(alert);
-  res.json({ success: true, push: result });
+  console.log('[webhook] Received alert ' + alert.id + ' severity=' + alert.severity);
+  const db2 = require('./src/db');
+  const tokens = await db2.getTokensNear(alert.lat, alert.lon, 1.5);
+  console.log('[webhook] Found ' + tokens.length + ' devices nearby');
+  if (tokens.length === 0) return res.json({ success: true, push: { sent: 0, failed: 0 } });
+  const axios = require('axios');
+  const messages = tokens.map(token => ({
+    to: token,
+    title: alert.severity === 'HIGH' ? '🚨 Crowd Surge Alert' : alert.severity === 'MED' ? '⚠️ Crowd Activity' : '📍 Crowd Report',
+    body: alert.message || 'Crowd activity detected near you.',
+    data: { alertId: String(alert.id), severity: alert.severity },
+    sound: 'default', priority: 'high',
+  }));
+  const response = await axios.post('https://exp.host/--/api/v2/push/send', messages, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+  const results = Array.isArray(response.data.data) ? response.data.data : [];
+  const sent = results.filter(r => r.status === 'ok').length;
+  const failed = results.filter(r => r.status !== 'ok').length;
+  results.forEach((r, i) => { if (r.status !== 'ok') console.error('[push] Error token ' + i + ':', JSON.stringify(r)); });
+  console.log('[push] Alert ' + alert.id + ': ' + sent + ' sent, ' + failed + ' failed');
+  res.json({ success: true, push: { sent, failed } });
 });
 
 // Initialize Firebase and start server
