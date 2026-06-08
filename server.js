@@ -4,7 +4,7 @@
 // by requiring pushService.js and calling pushAlertToNearbyDevices() 
 // from alertService.js after firing an alert.
 
-require('dotenv').config();
+// dotenv not needed on Railway
 const express = require('express');
 const axios   = require('axios');
 
